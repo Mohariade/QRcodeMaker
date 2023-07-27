@@ -24,12 +24,17 @@ class MainWindow(QStackedWidget):
         #field to enter text that will be encoded in QR
         self.input_field=QLineEdit()
         self.input_field.setPlaceholderText("Enter your text ")
-
-        wlcm_lab=QLabel("Creat QR Codes \nWith Infinity Styles")
+        self.input_field.returnPressed.connect(self.Generate_qr)
+        wlcm_lab=QLabel("QRCodeMaker")
         wlcm_lab.setAlignment(Qt.AlignCenter) 
         wlcm_lab.setStyleSheet(self.stylesheet)
         box.addWidget(wlcm_lab)
+        box.addStretch()
+        desc_lab=QLabel("A simple app to simplify getting Qrcode with additional \n features enjoy using it ")
+        desc_lab.setAlignment(Qt.AlignCenter)
+        desc_lab.setObjectName("Desc")
 
+        box.addWidget(desc_lab)
         box.addStretch()
 
         hbox=QHBoxLayout()
@@ -70,31 +75,25 @@ class MainWindow(QStackedWidget):
         if not self.iscreated:
             print("Not created before")
             self.w2 = QrWindow(self)
-
+            
             self.addWidget(self.w2)
             self.iscreated = True
-            self.setCurrentWidget(self.w2)  # Set the QrWindow as the current widget
-            self.show_next_window()  # Trigger the animation after setting the current widget
+            self.animate_transition()  # Trigger the animation after setting the current widget
         else:
             self.UpdateQrWindow()
-            self.setCurrentWidget(self.w2)
-            self.show_next_window()
+            self.animate_transition()
+    
+    def ShowNextWindow(self):
+        self.setCurrentWidget(self.w2)
 
-    def show_next_window(self):
-        next_window =self.w2
-        self.animate_transition(next_window)
-
-    def animate_transition(self, next_window):
-        current_geometry = self.geometry()
-        next_geometry = QRect(current_geometry.x() + 200, current_geometry.y(), current_geometry.width(), current_geometry.height())
-
-        animation = QPropertyAnimation(self, b'geometry')
-        animation.setDuration(1000)  # Increase the duration to 1000 milliseconds (1 second)
-        animation.setStartValue(current_geometry)
-        animation.setEndValue(next_geometry)
-        animation.setEasingCurve(QEasingCurve.OutElastic)  # Change the easing curve to OutElastic
-        animation.finished.connect(next_window.show)
-        animation.start(QPropertyAnimation.DeleteWhenStopped)
+    def animate_transition(self):
+        self.anim=QPropertyAnimation(self.main_widget, b"pos")
+        self.anim.setEndValue(QPoint(-500, 0))
+        self.anim.setDuration(300)
+        self.anim.setEasingCurve(QEasingCurve.InOutCubic)
+        self.anim.start()
+        self.anim.finished.connect(self.ShowNextWindow)
+        print("animation")
 
 
 class QrWindow(QWidget):
@@ -129,14 +128,65 @@ class QrWindow(QWidget):
         self.setStyleSheet(self.MainWindow.stylesheet)
         self.setLayout(layout)
 
+    def animate_transition(self):
+        self.anim=QPropertyAnimation(self, b"pos")
+        self.anim.setEndValue(QPoint(-500, 0))
+        self.anim.setDuration(300)
+        self.anim.setEasingCurve(QEasingCurve.InOutCubic)
+        self.anim.start()
+        self.anim.finished.connect(self.ShowNextWindow)
+    
+    def ShowNextWindow(self):
+        self.MainWindow.setCurrentWidget(self.w3)
+
     def next(self):
         self.w3=SaveWindow(self)
         self.MainWindow.addWidget(self.w3)
-        self.MainWindow.setCurrentWidget(self.w3)
-
-    def back(self):
+        self.animate_transition()
+        
+        
+    
+    def ShowPrevWindow(self):
         self.MainWindow.setCurrentWidget(self.MainWindow.main_widget)
+    def back(self):
+        self.anim=QPropertyAnimation(self, b"pos")
+        self.anim.setEndValue(QPoint(500, 0))
+        self.anim.setDuration(300)
+        self.anim.start()
+        self.anim.finished.connect(self.ShowPrevWindow)
 
+
+class CustomMessageBox(QDialog):
+    def __init__(self, parent=None, message="", timeout=2000):
+        super().__init__(parent, flags=Qt.FramelessWindowHint)
+
+        with open('style.css', 'r') as f:
+            self.stylesheet=f.read()
+
+        self.setObjectName("dialog")
+        self.setGeometry(1250, 100, 200, 80)
+
+        self.setStyleSheet(self.stylesheet)  # Set the background color
+        layout = QVBoxLayout()
+        label = QLabel(message)
+        label.setObjectName("msg")
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label)
+        self.setLayout(layout)
+
+        self.animation = QVariantAnimation()
+        self.animation.setDuration(2000)  # Animation duration in milliseconds
+        self.animation.setStartValue(1.0)
+        self.animation.setEndValue(0.0)
+        self.animation.setEasingCurve(QEasingCurve.InCubic)
+
+        self.animation.valueChanged.connect(self.update_opacity)
+        self.animation.finished.connect(self.close)
+        self.animation.start()
+    
+    def update_opacity(self, value):
+        self.setWindowOpacity(value)
+        
 
 class  SaveWindow(QWidget):
     def __init__(self, qrwindow):
@@ -146,18 +196,24 @@ class  SaveWindow(QWidget):
         self.name_field=QLineEdit()
         self.name_field.setPlaceholderText("Enter file name ")
         self.name_field.setStyleSheet(self.qrwindow.MainWindow.stylesheet)
+        self.name_field.returnPressed.connect(self.save_qr)
 
         save_btn=QPushButton("Save")
         save_btn.setStyleSheet(self.qrwindow.MainWindow.stylesheet)
         save_btn.clicked.connect(self.save_qr)
 
-        layout=QVBoxLayout()
-        layout.addWidget(self.name_field)
-        layout.addWidget(save_btn)
+        self.layout=QVBoxLayout()
+        self.layout.addWidget(self.name_field)
+        self.layout.addWidget(save_btn)
         
-        self.setLayout(layout)
+        self.setLayout(self.layout)
 
         self.IsSaveWindowCreated=True
+    
+    def show_message_box(self):
+        message = "Saved Successfully!"
+        msg_box = CustomMessageBox(self, message)
+        msg_box.exec_()
     
     def save_qr(self):
         options = QFileDialog.Options()
@@ -169,6 +225,7 @@ class  SaveWindow(QWidget):
                 # Use the selected folder path and file name to save the image
                 file_path = f"{folder_path}/{file_name}.png"  # Modify the file extension as needed
                 self.qrwindow.MainWindow.qr_img.save(file_path)
+                self.show_message_box()
 
 
 def main():
