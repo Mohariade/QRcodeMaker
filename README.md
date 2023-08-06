@@ -1,6 +1,7 @@
 # QR Code Maker App
 
-![QR Code Maker App](path/to/your/app_screenshot.png)
+<img src="Icon.png" width="200" height="200" alt="Icon">
+
 
 ## Description
 
